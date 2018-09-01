@@ -12,8 +12,8 @@ import (
 )
 
 var (
-	back_buffer  cellbuf
-	front_buffer cellbuf
+	backBuffer   cellbuf
+	frontBuffer  cellbuf
 	termw        int
 	termh        int
 	outbuf       bytes.Buffer
@@ -28,14 +28,14 @@ type winsize struct {
 	ypixels uint16
 }
 
-func get_term_size() (int, int) {
+func getTermSize() (int, int) {
 	var sz winsize
 	_, _, _ = syscall.Syscall(syscall.SYS_IOCTL,
 		os.Stdout.Fd(), uintptr(syscall.TIOCGWINSZ), uintptr(unsafe.Pointer(&sz)))
 	return int(sz.cols), int(sz.rows)
 }
 
-func write_cursor(x, y int) {
+func writeCursor(x, y int) {
 	outbuf.WriteString("\033[")
 	outbuf.Write(strconv.AppendUint(intbuf, uint64(y+1), 10))
 	outbuf.WriteString(";")
@@ -43,11 +43,11 @@ func write_cursor(x, y int) {
 	outbuf.WriteString("H")
 }
 
-func send_char(x, y int, ch rune) {
+func sendChar(x, y int, ch rune) {
 	var buf [8]byte
 	n := utf8.EncodeRune(buf[:], ch)
 	if x-1 != lastx || y != lasty {
-		write_cursor(x, y)
+		writeCursor(x, y)
 	}
 	lastx, lasty = x, y
 	outbuf.Write(buf[:n])
@@ -59,20 +59,20 @@ func flush() error {
 	return errs.Wrap(err)
 }
 
-func send_clear() error {
-	outbuf.WriteString(funcs[t_clear_screen])
+func sendClear() error {
+	outbuf.WriteString(funcs[fnClearScreen])
 	lastx, lasty = -2, -2
 	return flush()
 }
 
-func update_size_maybe() error {
-	w, h := get_term_size()
+func updateSize() error {
+	w, h := getTermSize()
 	if w != termw || h != termh {
 		termw, termh = w, h
-		back_buffer.resize(termw, termh)
-		front_buffer.resize(termw, termh)
-		front_buffer.clear()
-		return send_clear()
+		backBuffer.resize(termw, termh)
+		frontBuffer.resize(termw, termh)
+		frontBuffer.clear()
+		return sendClear()
 	}
 	return nil
 }

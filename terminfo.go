@@ -12,31 +12,27 @@ import (
 )
 
 const (
-	t_enter_ca     = 28
-	t_exit_ca      = 40
-	t_show_cursor  = 16
-	t_hide_cursor  = 13
-	t_clear_screen = 5
-	t_enter_keypad = 89
-	t_exit_keypad  = 88
+	fnEnterCa     = 28
+	fnExitCa      = 40
+	fnShowCursor  = 16
+	fnHideCursor  = 13
+	fnClearScreen = 5
 )
 
 var funcs = map[int16]string{
-	t_enter_ca:     "",
-	t_exit_ca:      "",
-	t_show_cursor:  "",
-	t_hide_cursor:  "",
-	t_clear_screen: "",
-	t_enter_keypad: "",
-	t_exit_keypad:  "",
+	fnEnterCa:     "",
+	fnExitCa:      "",
+	fnShowCursor:  "",
+	fnHideCursor:  "",
+	fnClearScreen: "",
 }
 
 const (
-	ti_magic         = 0432
-	ti_header_length = 12
+	tiMagic        = 0432
+	tiHeaderLength = 12
 )
 
-func load_terminfo() (data []byte, err error) {
+func loadTerminfo() (data []byte, err error) {
 	term := os.Getenv("TERM")
 	if term == "" {
 		return nil, errs.New("termbox: TERM not set")
@@ -44,12 +40,12 @@ func load_terminfo() (data []byte, err error) {
 
 	terminfo := os.Getenv("TERMINFO")
 	if terminfo != "" {
-		return ti_try_path(terminfo)
+		return tryTerminfoPath(terminfo)
 	}
 
 	home := os.Getenv("HOME")
 	if home != "" {
-		data, err = ti_try_path(home + "/.terminfo")
+		data, err = tryTerminfoPath(home + "/.terminfo")
 		if err == nil {
 			return data, nil
 		}
@@ -61,23 +57,23 @@ func load_terminfo() (data []byte, err error) {
 			if dir == "" {
 				dir = "/usr/share/terminfo"
 			}
-			data, err = ti_try_path(dir)
+			data, err = tryTerminfoPath(dir)
 			if err == nil {
 				return data, nil
 			}
 		}
 	}
 
-	data, err = ti_try_path("/lib/terminfo")
+	data, err = tryTerminfoPath("/lib/terminfo")
 	if err == nil {
 		return data, nil
 	}
 
-	return ti_try_path("/usr/share/terminfo")
+	return tryTerminfoPath("/usr/share/terminfo")
 }
 
-func ti_try_path(path string) (data []byte, err error) {
-	// load_terminfo already made sure it is set
+func tryTerminfoPath(path string) (data []byte, err error) {
+	// loadTerminfo already made sure it is set
 	term := os.Getenv("TERM")
 
 	// first try, the typical *nix path
@@ -97,7 +93,7 @@ func ti_try_path(path string) (data []byte, err error) {
 	return data, nil
 }
 
-func setup_term_builtin() error {
+func setupTermBuiltin() error {
 	name := os.Getenv("TERM")
 	if name == "" {
 		return errs.New("termbox: TERM environment variable not set")
@@ -110,22 +106,21 @@ func setup_term_builtin() error {
 		}
 	}
 
-	compat_table := []struct {
+	compatTable := []struct {
 		partial string
 		funcs   map[int16]string
 	}{
-		{"xterm", xterm_funcs},
-		{"rxvt", rxvt_unicode_funcs},
-		{"linux", linux_funcs},
-		{"Eterm", eterm_funcs},
-		{"screen", screen_funcs},
-		// let's assume that 'cygwin' is xterm compatible
-		{"cygwin", xterm_funcs},
-		{"st", xterm_funcs},
+		{"xterm", xtermFuncs},
+		{"rxvt", rxvtUnicodeFuncs},
+		{"linux", linuxFuncs},
+		{"Eterm", etermFuncs},
+		{"screen", screenFuncs},
+		{"cygwin", xtermFuncs},
+		{"st", xtermFuncs},
 	}
 
 	// try compatibility variants
-	for _, it := range compat_table {
+	for _, it := range compatTable {
 		if strings.Contains(name, it.partial) {
 			funcs = it.funcs
 			return nil
@@ -135,14 +130,14 @@ func setup_term_builtin() error {
 	return errs.New("termbox: unsupported terminal")
 }
 
-func setup_term() (err error) {
+func setupTerm() (err error) {
 	var data []byte
 	var header [6]int16
-	var str_offset, table_offset int16
+	var strOffset, tableOffset int16
 
-	data, err = load_terminfo()
+	data, err = loadTerminfo()
 	if err != nil {
-		return setup_term_builtin()
+		return setupTermBuiltin()
 	}
 
 	rd := bytes.NewReader(data)
@@ -150,20 +145,20 @@ func setup_term() (err error) {
 		return errs.Wrap(err)
 	}
 
-	number_sec_len := int16(2)
+	numberSecLen := int16(2)
 	if header[0] == 542 {
-		number_sec_len = 4
+		numberSecLen = 4
 	}
 
 	if (header[1]+header[2])%2 != 0 {
 		header[2] += 1
 	}
 
-	str_offset = ti_header_length + header[1] + header[2] + number_sec_len*header[3]
-	table_offset = str_offset + 2*header[4]
+	strOffset = tiHeaderLength + header[1] + header[2] + numberSecLen*header[3]
+	tableOffset = strOffset + 2*header[4]
 
-	for i, _ := range funcs {
-		funcs[i], err = ti_read_string(rd, str_offset+2*i, table_offset)
+	for i := range funcs {
+		funcs[i], err = readTerminfoString(rd, strOffset+2*i, tableOffset)
 		if err != nil {
 			return errs.Wrap(err)
 		}
@@ -172,10 +167,10 @@ func setup_term() (err error) {
 	return nil
 }
 
-func ti_read_string(rd *bytes.Reader, str_off, table int16) (string, error) {
+func readTerminfoString(rd *bytes.Reader, strOffset, table int16) (string, error) {
 	var off int16
 
-	_, err := rd.Seek(int64(str_off), 0)
+	_, err := rd.Seek(int64(strOffset), 0)
 	if err != nil {
 		return "", errs.Wrap(err)
 	}

@@ -6,23 +6,23 @@ type cellbuf struct {
 	data   []rune
 }
 
-func (this *cellbuf) init(width, height int) {
-	this.width = width
-	this.height = height
-	this.data = make([]rune, width*height)
+func (cb *cellbuf) init(width, height int) {
+	cb.width = width
+	cb.height = height
+	cb.data = make([]rune, width*height)
 }
 
-func (this *cellbuf) resize(width, height int) {
-	if this.width == width && this.height == height {
+func (cb *cellbuf) resize(width, height int) {
+	if cb.width == width && cb.height == height {
 		return
 	}
 
-	oldw := this.width
-	oldh := this.height
-	olddata := append([]rune(nil), this.data...)
+	oldw := cb.width
+	oldh := cb.height
+	olddata := append([]rune(nil), cb.data...)
 
-	this.init(width, height)
-	this.clear()
+	cb.init(width, height)
+	cb.clear()
 
 	minw, minh := oldw, oldh
 
@@ -36,13 +36,13 @@ func (this *cellbuf) resize(width, height int) {
 	for i := 0; i < minh; i++ {
 		srco, dsto := i*oldw, i*width
 		src := olddata[srco : srco+minw]
-		dst := this.data[dsto : dsto+minw]
+		dst := cb.data[dsto : dsto+minw]
 		copy(dst, src)
 	}
 }
 
-func (this *cellbuf) clear() {
-	for i := range this.data {
-		this.data[i] = ' '
+func (cb *cellbuf) clear() {
+	for i := range cb.data {
+		cb.data[i] = ' '
 	}
 }

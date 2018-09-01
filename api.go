@@ -7,41 +7,42 @@ import (
 	"github.com/zeebo/errs"
 )
 
+// Init starts up the library.
 func Init() error {
-	if err := setup_term(); err != nil {
+	if err := setupTerm(); err != nil {
 		return errs.New("termbox: error while reading terminfo data: %v", err)
 	}
 
-	os.Stdout.WriteString(funcs[t_enter_ca])
-	os.Stdout.WriteString(funcs[t_enter_keypad])
-	os.Stdout.WriteString(funcs[t_hide_cursor])
-	os.Stdout.WriteString(funcs[t_clear_screen])
+	os.Stdout.WriteString(funcs[fnEnterCa])
+	os.Stdout.WriteString(funcs[fnHideCursor])
+	os.Stdout.WriteString(funcs[fnClearScreen])
 
-	termw, termh = get_term_size()
-	back_buffer.init(termw, termh)
-	front_buffer.init(termw, termh)
-	back_buffer.clear()
-	front_buffer.clear()
+	termw, termh = getTermSize()
+	backBuffer.init(termw, termh)
+	frontBuffer.init(termw, termh)
+	backBuffer.clear()
+	frontBuffer.clear()
 
 	return nil
 }
 
+// Close should be called before the process exits.
 func Close() {
-	os.Stdout.WriteString(funcs[t_show_cursor])
-	os.Stdout.WriteString(funcs[t_clear_screen])
-	os.Stdout.WriteString(funcs[t_exit_ca])
-	os.Stdout.WriteString(funcs[t_exit_keypad])
+	os.Stdout.WriteString(funcs[fnShowCursor])
+	os.Stdout.WriteString(funcs[fnClearScreen])
+	os.Stdout.WriteString(funcs[fnExitCa])
 }
 
+// Flush writes any changed data to the screen.
 func Flush() error {
-	update_size_maybe()
+	updateSize()
 
-	for y := 0; y < front_buffer.height; y++ {
-		line_offset := y * front_buffer.width
-		for x := 0; x < front_buffer.width; {
-			offset := line_offset + x
-			back := &back_buffer.data[offset]
-			front := &front_buffer.data[offset]
+	for y := 0; y < frontBuffer.height; y++ {
+		lineOffset := y * frontBuffer.width
+		for x := 0; x < frontBuffer.width; {
+			offset := lineOffset + x
+			back := &backBuffer.data[offset]
+			front := &frontBuffer.data[offset]
 			if *back < ' ' {
 				*back = ' '
 			}
@@ -55,13 +56,13 @@ func Flush() error {
 			}
 			*front = *back
 
-			if w == 2 && x == front_buffer.width-1 {
-				send_char(x, y, ' ')
+			if w == 2 && x == frontBuffer.width-1 {
+				sendChar(x, y, ' ')
 			} else {
-				send_char(x, y, *back)
+				sendChar(x, y, *back)
 				if w == 2 {
 					next := offset + 1
-					front_buffer.data[next] = 0
+					frontBuffer.data[next] = 0
 				}
 			}
 			x += w
@@ -71,23 +72,26 @@ func Flush() error {
 	return flush()
 }
 
+// Set puts the character at position x,y to be the given rune.
 func Set(x, y int, ch rune) {
-	if x < 0 || x >= back_buffer.width {
+	if x < 0 || x >= backBuffer.width {
 		return
 	}
-	if y < 0 || y >= back_buffer.height {
+	if y < 0 || y >= backBuffer.height {
 		return
 	}
 
-	back_buffer.data[y*back_buffer.width+x] = ch
+	backBuffer.data[y*backBuffer.width+x] = ch
 }
 
+// Size returns the size of the terminal.
 func Size() (width int, height int) {
 	return termw, termh
 }
 
+// Clear clears the terminal.
 func Clear() error {
-	err := update_size_maybe()
-	back_buffer.clear()
+	err := updateSize()
+	backBuffer.clear()
 	return err
 }
