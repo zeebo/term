@@ -1,0 +1,4 @@
+github.com/mattn/go-runewidth v0.0.3 h1:a+kO+98RDGEfo6asOGMmpodZq4FNtnGP54yps8BzLR4=
+github.com/mattn/go-runewidth v0.0.3/go.mod h1:LwmH8dsx7+W8Uxz3IHJYH5QSwggIsqBzpuz5H//U1FU=
+github.com/zeebo/errs v1.0.0 h1:uPx2/S2dQn9npw2Y9AKTae12AHkHSqk1WiaRiBNguFA=
+github.com/zeebo/errs v1.0.0/go.mod h1:Yj8dHrUQwls1bF3dr/vcSIu+qf4mI7idnTcHfoACc6I=
